@@ -423,7 +423,10 @@ function update() {
                     if (o.type === 'barrier') hit = P.wy < o.h;
                     else if (o.type === 'highbar') hit = !P.sliding;
                     else if (o.type === 'train') {
-                        if (o.climbable) {
+                        if (P.wy >= 80 && (P.wasOnTrain || P.flyT > 0)) {
+                            o.passed = true;
+                            hit = false;
+                        } else if (o.climbable) {
                             hit = false; // climbable train acts as ramp
                         } else {
                             hit = P.wy < o.h; // standard bullet train is wall
