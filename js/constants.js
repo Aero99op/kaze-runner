@@ -22,4 +22,4 @@ const TREE_STEP = 360;           // spacing for Sakura trees (prevent canopy ove
 // Dynamic backend selection: Use localhost for local play, and live URL on production (Vercel)
 const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000'
-    : 'https://YOUR-RENDER-BACKEND-URL.onrender.com'; // TODO: Replace with your actual Render service URL
+    : 'https://kaze-runner-backend.onrender.com';
