@@ -102,7 +102,14 @@ app.post("/reward", async (req, res) => {
       return res.status(400).json({ error: "Coins must be a number greater than 0." });
     }
     // Calculate custom reward: coins * conversion rate
-    const calculatedReward = coinsNum * Number(COIN_REWARD_RATE);
+    let calculatedReward = coinsNum * Number(COIN_REWARD_RATE);
+
+    // Hard Cap Check: Clip reward if it exceeds maximum limit per 24 hours
+    const maxLimit = Number(process.env.MAX_REWARD_LIMIT_ETH || "0.01");
+    if (calculatedReward > maxLimit) {
+      calculatedReward = maxLimit;
+    }
+
     // Format to 6 decimal places to prevent float precision issues in parseEther
     rewardEthStr = calculatedReward.toFixed(6);
   }
@@ -179,6 +186,7 @@ app.get("/status", async (req, res) => {
       rewardPoolBalanceEth: ethers.formatEther(balance),
       rewardAmountEth: REWARD_AMOUNT_ETH,
       coinRewardRateEth: COIN_REWARD_RATE,
+      maxRewardLimitEth: process.env.MAX_REWARD_LIMIT_ETH || "0.01",
       cooldownHours: REWARD_COOLDOWN_HOURS,
     });
   } catch (err) {
@@ -192,6 +200,7 @@ app.listen(PORT, () => {
   console.log(`   Reward wallet: ${rewardWallet.address}`);
   console.log(`   Base reward amount: ${REWARD_AMOUNT_ETH} ETH`);
   console.log(`   Coin conversion rate: 1 Coin = ${COIN_REWARD_RATE} ETH`);
+  console.log(`   Maximum reward limit: ${process.env.MAX_REWARD_LIMIT_ETH || "0.01"} ETH per 24 hours`);
   console.log(`   Cooldown: ${REWARD_COOLDOWN_HOURS} hour(s) per wallet`);
   console.log(`   Check pool balance any time: http://localhost:${PORT}/status\n`);
 });
