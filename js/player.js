@@ -115,7 +115,7 @@ function updatePlayer() {
             P.wy = targetGroundY;
             P.velY = 0;
             P.jumping = false;
-            P.squishT = 10; // Trigger landing squish compression (10 frames)
+            P.squishT = 14; // Trigger landing squish compression (14 frames = 233ms)
             if (typeof camHeightVel !== 'undefined') {
                 camHeightVel = -14; // screen landing dip!
             }
@@ -207,8 +207,8 @@ function drawPlayer(ctx) {
     ctx.save();
     ctx.translate(p.x, p.y);
 
-    // Dynamic Camera roll/tilt based on actual lateral velocity (leans naturally into turns)
-    const rollAngle = P.velX * 0.015; // counter-clockwise tilt when moving left, clockwise when right
+    // Combined lateral camera roll (tilts whole character into turns, opposite velX direction)
+    const rollAngle = -P.velX * 0.018;
     ctx.rotate(rollAngle);
 
     // 1. Vector Drop Shadow (Grounded on asphalt or train roof below runner)
@@ -240,32 +240,55 @@ function drawPlayer(ctx) {
     let stretchY = 1.0;
     
     if (P.jumping) {
-        // Stretch vertically as vertical speed increases
-        const factor = Math.min(Math.abs(P.velY) * 0.012, 0.15);
-        stretchX = 1.0 - factor;
-        stretchY = 1.0 + factor;
+        // Rising: stretch tall; falling: compress to brace for landing
+        const velFactor = Math.min(Math.abs(P.velY) * 0.014, 0.18);
+        if (P.velY > 0) {
+            // Rising — elongate body
+            stretchX = 1.0 - velFactor * 0.6;
+            stretchY = 1.0 + velFactor;
+        } else {
+            // Falling — slight horizontal brace anticipation
+            stretchX = 1.0 + velFactor * 0.3;
+            stretchY = 1.0 - velFactor * 0.35;
+        }
     } else if (P.squishT > 0) {
-        // Compress vertically on landing impact
-        const phase = P.squishT / 10; // scales from 1.0 down to 0
-        const factor = Math.sin(phase * Math.PI) * 0.18; // peak squish amplitude
-        stretchX = 1.0 + factor;
-        stretchY = 1.0 - factor;
+        // Landing impact: heavy squish then spring-back rebound
+        const phase = P.squishT / 14;
+        const squishFactor = Math.sin(phase * Math.PI) * 0.26;  // peak squish
+        const reboundFactor = Math.sin(phase * Math.PI * 0.5) * 0.08; // subtle rebound
+        stretchX = 1.0 + squishFactor + reboundFactor;
+        stretchY = 1.0 - squishFactor + reboundFactor * 0.4;
     }
 
     ctx.scale(s * stretchX, s * stretchY);
 
-    // 3. Torso bobbing & shoulder sways (Run cycle weights)
+    // 3. Torso bobbing, forward lean, lateral tilt & shoulder sways (accurate run cycle)
     let bobY = 0;
     let bobAngle = 0;
-    if (!slide && !P.jumping) {
-        bobY = Math.sin(lp * 2) * 1.5; // torso bobbing up/down twice per gait cycle
-        bobAngle = Math.cos(lp) * 0.038; // slight shoulder sway
+    let forwardLean = 0; // tilt forward/back on Z-axis (mapped to rotate)
+
+    if (!slide && !P.jumping && P.flyT <= 0) {
+        bobY = Math.sin(lp * 2) * 2.0;       // torso bobs twice per gait cycle
+        bobAngle = Math.cos(lp) * 0.05;      // shoulder counter-rotation
+
+        // Forward lean increases with speed
+        const currentSpd = typeof speed !== 'undefined' ? speed : 7;
+        forwardLean = Math.min((currentSpd - 7) / 18, 1.0) * 0.12; // max 7° lean
+    }
+
+    if (P.jumping) {
+        // Lean back slightly on launch, tuck forward at apex
+        forwardLean = P.velY > 5 ? -0.08 : 0.06;
     }
 
     if (P.stumbleT > 0) {
-        bobAngle += Math.sin(P.stumbleT * 0.5) * 0.15; // heavy stagger wobble
-        bobY += Math.cos(P.stumbleT * 0.5) * 2.5;
+        bobAngle += Math.sin(P.stumbleT * 0.45) * 0.20; // heavy recovery stagger
+        bobY += Math.cos(P.stumbleT * 0.45) * 3.5;
+        forwardLean += Math.sin(P.stumbleT * 0.3) * 0.12;
     }
+
+    // Lateral body tilt into lane switches (leans into the turn)
+    const lateralTilt = -P.velX * 0.018;
 
     const bodyY = (slide ? -14 : -40) + bobY;
     const headY = (slide ? -26 : -53) + bobY;
@@ -286,8 +309,28 @@ function drawPlayer(ctx) {
             ctx.save();
             ctx.translate(hipX, hipY);
 
-            // Thigh swings back/forward slightly (hip joint rotation)
-            const thighAngle = Math.sin(phase) * 0.28; // limited to prevent crab outward kicks
+            let thighAngle = 0;
+            let calfAngle = 0;
+
+            if (P.flyT > 0) {
+                // Aerodynamic flying/floating pose
+                thighAngle = legIdx === 0 ? -0.12 : 0.12;
+                calfAngle = 0.25;
+            } else if (P.jumping) {
+                // Dynamic jumping pose
+                if (legIdx === 0) {
+                    thighAngle = -0.32; // left thigh forward
+                    calfAngle = 0.55;   // knee bent
+                } else {
+                    thighAngle = 0.22;  // right thigh trailing
+                    calfAngle = 0.28;   // knee slightly bent
+                }
+            } else {
+                // Natural running leg motion (knees bend backward, feet swing naturally inward)
+                thighAngle = Math.sin(phase) * 0.28;
+                calfAngle = (legIdx === 0 ? 1 : -1) * Math.abs(Math.sin(phase)) * 0.28;
+            }
+
             ctx.rotate(thighAngle);
 
             // Draw Thigh (shaded pants)
@@ -300,8 +343,6 @@ function drawPlayer(ctx) {
             // Move to knee joint
             ctx.translate(0, 11);
 
-            // Calf bends backward at the knee (Symmetrical outward swing)
-            const calfAngle = (legIdx === 0 ? -1 : 1) * Math.abs(Math.sin(phase)) * 0.38;
             ctx.rotate(calfAngle);
 
             // Draw Calf (socks/pants continuation)
@@ -362,7 +403,7 @@ function drawPlayer(ctx) {
 
     // ── WIND-SWEPT JACKET BODY WITH SHOULDER SWAYS ──
     ctx.save();
-    ctx.rotate(bobAngle); // Shoulder sway rotation
+    ctx.rotate(bobAngle + forwardLean); // Shoulder sway + speed/jump forward lean
     
     const windG = ctx.createLinearGradient(0, bodyY, 0, bodyY + bodyH);
     windG.addColorStop(0, '#1e40af'); // deep shade
@@ -466,7 +507,7 @@ function drawPlayer(ctx) {
         }
     }
 
-    // ── ARMS (Fluid running swing) ──
+    // ── ARMS (Jointed Skeletal System) ──
     ctx.fillStyle = '#2563eb';
     if (!slide) {
         for (let armIdx = 0; armIdx < 2; armIdx++) {
@@ -475,27 +516,66 @@ function drawPlayer(ctx) {
             
             ctx.save();
             ctx.translate(sideSign * (bodyW / 2 - 2.2), bodyY + 4.5);
-            ctx.rotate(phase * 0.45 * sideSign + 0.1);
             
-            // Sleeve
-            ctx.fillRect(sideSign * 2.5 - 2.5, 0, 5.0, 16);
-            ctx.strokeRect(sideSign * 2.5 - 2.5, 0, 5.0, 16);
+            let upperArmAngle = 0;
+            let elbowAngle = 0;
+
+            if (P.jumping) {
+                // Arms raised up and outwards to balance the jump
+                upperArmAngle = sideSign * 1.5; 
+                elbowAngle = -sideSign * 0.45;
+            } else {
+                // Natural running arm swing (oscillating sine wave, prevents continuous spinning)
+                upperArmAngle = Math.sin(phase) * 0.48 * sideSign + 0.1;
+                elbowAngle = -sideSign * (0.8 + Math.sin(phase + Math.PI / 2) * 0.25);
+            }
+
+            ctx.rotate(upperArmAngle);
+            
+            // Upper Arm Sleeve
+            ctx.fillRect(-2.5, 0, 5.0, 9);
+            ctx.strokeRect(-2.5, 0, 5.0, 9);
+            
+            ctx.translate(0, 8);
+            ctx.rotate(elbowAngle);
+            
+            // Forearm Sleeve
+            ctx.fillRect(-2.0, 0, 4.0, 8);
+            ctx.strokeRect(-2.0, 0, 4.0, 8);
             
             // Skin Hand
             ctx.fillStyle = '#fcd5b0';
             ctx.beginPath();
-            ctx.arc(0, 17.5, 2.5, 0, Math.PI * 2);
+            ctx.arc(0, 9.5, 2.5, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
             ctx.restore();
             ctx.fillStyle = '#2563eb';
         }
     } else {
-        // Slide tuck arms
-        ctx.fillRect(-bodyW / 2 - 4.5, bodyY + 6.5, 6, 12);
-        ctx.strokeRect(-bodyW / 2 - 4.5, bodyY + 6.5, 6, 12);
-        ctx.fillRect(bodyW / 2 - 1.5, bodyY + 6.5, 6, 12);
-        ctx.strokeRect(bodyW / 2 - 1.5, bodyY + 6.5, 6, 12);
+        // Jointed slide arms trailing backward
+        for (let armIdx = 0; armIdx < 2; armIdx++) {
+            const sideSign = armIdx === 0 ? -1 : 1;
+            ctx.save();
+            ctx.translate(sideSign * (bodyW / 2 - 2.2), bodyY + 4.5);
+            
+            ctx.rotate(-sideSign * 0.9);
+            ctx.fillRect(-2.5, 0, 5, 10);
+            ctx.strokeRect(-2.5, 0, 5, 10);
+            
+            ctx.translate(0, 9);
+            ctx.rotate(-sideSign * 0.4);
+            ctx.fillRect(-2.0, 0, 4, 7);
+            ctx.strokeRect(-2.0, 0, 4, 7);
+
+            // Skin Hand
+            ctx.fillStyle = '#fcd5b0';
+            ctx.beginPath();
+            ctx.arc(0, 8.5, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
     }
     
     ctx.restore(); // Restore shoulder sways
@@ -837,7 +917,7 @@ function drawCatcher(ctx) {
     // Left arm running swing
     ctx.save();
     ctx.translate(-bodyW / 2 + 2, -39);
-    ctx.rotate(clp * 0.35 - 0.2);
+    ctx.rotate(Math.sin(clp) * 0.35 - 0.2);
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(-4, 0, 4.5, 15);
     ctx.strokeRect(-4, 0, 4.5, 15);
