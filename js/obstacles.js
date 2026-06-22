@@ -15,6 +15,8 @@ function drawSingleObstacle(ctx, o) {
         drawHighBar(ctx, lx, o, fp, bp);
     } else if (o.type === 'train') {
         drawTrain(ctx, lx, o, fp, bp);
+    } else if (o.type === 'tunnel_gate') {
+        drawTunnelGate(ctx, lx, o, fp, bp);
     }
     ctx.restore();
 }
@@ -974,4 +976,95 @@ function drawTrain(ctx, lx, o, fp, bp) {
             ctx.stroke();
         }
     }
+}
+
+function drawTunnelGate(ctx, lx, o, fp, bp) {
+    const hw = o.w * fp.s * 0.5;
+    const bh = o.h * fp.s;
+    const bx = fp.x - hw;
+    const by = fp.y - bh;
+    const bw = hw * 2;
+    const tick = typeof frame !== 'undefined' ? frame : 0;
+
+    ctx.save();
+    
+    // 1. Drawing the solid outer frame of the tunnel portal (arched concrete structure)
+    ctx.fillStyle = '#1e1b4b'; // dark blue/indigo concrete
+    ctx.strokeStyle = '#020617'; // dark outline
+    ctx.lineWidth = Math.max(2.0, 4.0 * fp.s);
+
+    ctx.beginPath();
+    ctx.moveTo(bx, fp.y);
+    ctx.lineTo(bx, by + bh * 0.4);
+    ctx.bezierCurveTo(bx, by, bx + bw, by, bx + bw, by + bh * 0.4);
+    ctx.lineTo(bx + bw, fp.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 2. Draw the black inner portal mouth (tunnel entrance void)
+    ctx.fillStyle = '#020617'; // pure dark void
+    ctx.beginPath();
+    ctx.moveTo(bx + 18 * fp.s, fp.y);
+    ctx.lineTo(bx + 18 * fp.s, by + bh * 0.45);
+    ctx.bezierCurveTo(bx + 18 * fp.s, by + 12 * fp.s, bx + bw - 18 * fp.s, by + 12 * fp.s, bx + bw - 18 * fp.s, by + bh * 0.45);
+    ctx.lineTo(bx + bw - 18 * fp.s, fp.y);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Glowing neon borders along the arch mouth
+    ctx.strokeStyle = 'rgba(0, 240, 255, 0.85)'; // cyan neon glow
+    ctx.shadowColor = '#00f0ff';
+    ctx.shadowBlur = Math.max(2, 10 * fp.s);
+    ctx.lineWidth = Math.max(1.5, 3.5 * fp.s);
+
+    ctx.beginPath();
+    ctx.moveTo(bx + 16 * fp.s, fp.y);
+    ctx.lineTo(bx + 16 * fp.s, by + bh * 0.45);
+    ctx.bezierCurveTo(bx + 16 * fp.s, by + 10 * fp.s, bx + bw - 16 * fp.s, by + 10 * fp.s, bx + bw - 16 * fp.s, by + bh * 0.45);
+    ctx.lineTo(bx + bw - 16 * fp.s, fp.y);
+    ctx.stroke();
+
+    ctx.shadowBlur = 0; // Reset shadow
+
+    // 4. Glowing portal caution lights (Blinking warning halos)
+    const bulbColor = (Math.floor(tick / 15) % 2 === 0) ? '#ff0055' : '#330011';
+    ctx.fillStyle = bulbColor;
+    if (fp.s > 0.15) {
+        ctx.beginPath();
+        ctx.arc(bx + 30 * fp.s, by + bh * 0.5, 4 * fp.s, 0, Math.PI * 2);
+        ctx.arc(bx + bw - 30 * fp.s, by + bh * 0.5, 4 * fp.s, 0, Math.PI * 2);
+        ctx.fill();
+        
+        if (bulbColor === '#ff0055') {
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            ctx.fillStyle = 'rgba(255, 0, 85, 0.28)';
+            ctx.beginPath();
+            ctx.arc(bx + 30 * fp.s, by + bh * 0.5, 12 * fp.s, 0, Math.PI * 2);
+            ctx.arc(bx + bw - 30 * fp.s, by + bh * 0.5, 12 * fp.s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    // 5. Label overlay text above the arch (Cyberpunk portal sign)
+    if (fp.s > 0.22) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${Math.max(9, Math.floor(13 * fp.s))}px "Noto Sans JP", "Outfit", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 5;
+        
+        let label = 'JUNGLE TUNNEL';
+        if (typeof gameTheme !== 'undefined' && gameTheme === 'jungle') {
+            label = 'TOKYO TUNNEL';
+        }
+        ctx.fillText(label, fp.x, by + 16 * fp.s);
+        ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
 }

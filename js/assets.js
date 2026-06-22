@@ -185,6 +185,49 @@ function drawSky(ctx) {
     const tick = typeof frame !== 'undefined' ? frame : 0;
     const timeState = getCurrentTimeState();
 
+    if (typeof tunnelState !== 'undefined' && tunnelState === 'inside') {
+        ctx.fillStyle = '#020617'; // dark tunnel void
+        ctx.fillRect(0, 0, W, HORIZON_Y + 2);
+        return;
+    }
+
+    if (typeof gameTheme !== 'undefined' && gameTheme === 'jungle') {
+        // Golden-emerald jungle twilight sky
+        const skyG = ctx.createLinearGradient(0, 0, 0, HORIZON_Y);
+        skyG.addColorStop(0, '#064e3b'); // deep jungle emerald top
+        skyG.addColorStop(0.55, '#047857'); // bright emerald mid
+        skyG.addColorStop(1, '#f59e0b'); // amber sunset bottom
+        ctx.fillStyle = skyG;
+        ctx.fillRect(0, 0, W, HORIZON_Y + 2);
+
+        // Volumetric atmospheric forest haze
+        const hazeG = ctx.createLinearGradient(0, HORIZON_Y - 55, 0, HORIZON_Y + 2);
+        hazeG.addColorStop(0, 'rgba(4, 120, 87, 0)');
+        hazeG.addColorStop(0.6, 'rgba(245, 158, 11, 0.12)');
+        hazeG.addColorStop(1, 'rgba(251, 191, 36, 0.28)');
+        ctx.fillStyle = hazeG;
+        ctx.fillRect(0, HORIZON_Y - 55, W, 57);
+
+        // Giant glowing jungle sun
+        ctx.save();
+        const sx = W * 0.72;
+        const sy = HORIZON_Y * 0.52;
+        
+        // Sun outer halo
+        const sunHalo = ctx.createRadialGradient(sx, sy, 0, sx, sy, 60);
+        sunHalo.addColorStop(0, 'rgba(251, 191, 36, 0.45)');
+        sunHalo.addColorStop(0.5, 'rgba(245, 158, 11, 0.15)');
+        sunHalo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = sunHalo;
+        ctx.beginPath(); ctx.arc(sx, sy, 60, 0, Math.PI * 2); ctx.fill();
+
+        // Sun core
+        ctx.fillStyle = '#ffedd5'; // warm peach-white
+        ctx.beginPath(); ctx.arc(sx, sy, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        return;
+    }
+
     // 1. Interpolate Sky Gradient stops (3-stop volumetric gradient)
     const skyColorTop = interpolateColor(
         ENV_COLORS.skyTop[timeState.current],
@@ -476,6 +519,39 @@ function drawCloud(ctx, cx, cy, size, alpha) {
 }
 
 function drawMountains(ctx) {
+    if (typeof tunnelState !== 'undefined' && tunnelState === 'inside') {
+        return;
+    }
+
+    if (typeof gameTheme !== 'undefined' && gameTheme === 'jungle') {
+        const mxShift = -camWX * 0.06;
+        
+        // Layer 0: Far forest canopy silhouette (slowest parallax)
+        ctx.fillStyle = '#064e3b'; // deep emerald silhouette
+        ctx.beginPath();
+        ctx.moveTo(0, HORIZON_Y);
+        const mPoints0 = [0, 80, 150, 240, 320, 420, 500, 600, 700, 810, 900];
+        const mHeights0 = [15, 32, 24, 45, 28, 48, 30, 42, 25, 38, 15];
+        mPoints0.forEach((x, i) => {
+            ctx.lineTo(x + mxShift * 0.5, HORIZON_Y - mHeights0[i]);
+        });
+        ctx.lineTo(900, HORIZON_Y);
+        ctx.closePath(); ctx.fill();
+
+        // Layer 1: Mid forest canopy silhouette
+        ctx.fillStyle = '#022c22'; // darker forest green
+        ctx.beginPath();
+        ctx.moveTo(0, HORIZON_Y);
+        const mPoints1 = [0, 100, 200, 300, 410, 520, 630, 750, 840, 900];
+        const mHeights1 = [8, 22, 14, 28, 16, 32, 18, 25, 12, 8];
+        mPoints1.forEach((x, i) => {
+            ctx.lineTo(x + mxShift, HORIZON_Y - mHeights1[i]);
+        });
+        ctx.lineTo(900, HORIZON_Y);
+        ctx.closePath(); ctx.fill();
+        return;
+    }
+
     const mxShift = -camWX * 0.06;
     const timeState = getCurrentTimeState();
 
@@ -650,6 +726,76 @@ function drawTokyoTower(ctx, mxShift) {
 }
 
 function drawBuildings(ctx) {
+    if (typeof tunnelState !== 'undefined' && tunnelState === 'inside') {
+        return;
+    }
+
+    if (typeof gameTheme !== 'undefined' && gameTheme === 'jungle') {
+        // Draw overgrown jungle temple ruins and magical monoliths
+        const bShift = -camWX * 0.22;
+        const tick = typeof frame !== 'undefined' ? frame : 0;
+        
+        ctx.save();
+        const ruins = [
+            { x: 45, w: 42, h: 110, color: '#131e1c', trim: '#34d399' },
+            { x: 190, w: 60, h: 145, color: '#131e1c', trim: '#6ee7b7' },
+            { x: 340, w: 35, h: 85, color: '#0f1715', trim: '#34d399' },
+            { x: 530, w: 50, h: 120, color: '#131e1c', trim: '#6ee7b7' },
+            { x: 710, w: 45, h: 95, color: '#0f1715', trim: '#34d399' }
+        ];
+        
+        ruins.forEach((r, ri) => {
+            const rx = r.x + bShift;
+            const ry = HORIZON_Y - r.h;
+            
+            ctx.fillStyle = r.color;
+            ctx.strokeStyle = '#060f0d';
+            ctx.lineWidth = 2.0;
+            ctx.beginPath();
+            ctx.moveTo(rx, HORIZON_Y);
+            ctx.lineTo(rx, ry);
+            ctx.lineTo(rx + r.w * 0.2, ry + 12);
+            ctx.lineTo(rx + r.w * 0.5, ry - 5);
+            ctx.lineTo(rx + r.w * 0.8, ry + 8);
+            ctx.lineTo(rx + r.w, ry);
+            ctx.lineTo(rx + r.w, HORIZON_Y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            if (ri % 2 === 0) {
+                ctx.strokeStyle = r.trim;
+                ctx.shadowColor = r.trim;
+                ctx.shadowBlur = 6;
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(rx + r.w * 0.5, HORIZON_Y - 20);
+                ctx.lineTo(rx + r.w * 0.5, ry + 30);
+                ctx.moveTo(rx + r.w * 0.3, HORIZON_Y - 45);
+                ctx.lineTo(rx + r.w * 0.7, HORIZON_Y - 45);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+            
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            ctx.fillStyle = ri % 2 === 0 ? 'rgba(236, 72, 153, 0.75)' : 'rgba(59, 130, 246, 0.75)';
+            const shroomX = rx + r.w * 0.5;
+            const shroomY = HORIZON_Y - r.h * 0.45;
+            ctx.beginPath();
+            ctx.arc(shroomX, shroomY, 14, Math.PI, 0);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2.0;
+            ctx.beginPath();
+            ctx.moveTo(shroomX, shroomY); ctx.lineTo(shroomX, shroomY + 12);
+            ctx.stroke();
+            ctx.restore();
+        });
+        ctx.restore();
+        return;
+    }
+
     const bShift = -camWX * 0.22;
     const timeState = getCurrentTimeState();
     const tick = typeof frame !== 'undefined' ? frame : 0;
@@ -857,8 +1003,96 @@ function drawRoad(ctx) {
     const fr = project(ROAD_HALF_W, 0, FAR_Z);
     const nl = project(-ROAD_HALF_W, 0, NEAR_Z);
     const nr = project(ROAD_HALF_W, 0, NEAR_Z);
+    const sl = project(-ROAD_HALF_W - 60, 0, FAR_Z);
+    const sr = project(ROAD_HALF_W + 60, 0, FAR_Z);
+    const snl = project(-ROAD_HALF_W - 60, 0, NEAR_Z);
+    const snr = project(ROAD_HALF_W + 60, 0, NEAR_Z);
     const timeState = getCurrentTimeState();
     const tick = typeof frame !== 'undefined' ? frame : 0;
+
+    if (typeof tunnelState !== 'undefined' && tunnelState === 'inside') {
+        ctx.fillStyle = '#050309'; // dark tunnel ground
+        ctx.fillRect(0, HORIZON_Y, W, H - HORIZON_Y);
+
+        ctx.save();
+        const stepZ = 90;
+        const offsetZ = typeof roadOff !== 'undefined' ? (roadOff % stepZ) : 0;
+        
+        ctx.strokeStyle = 'rgba(255, 0, 127, 0.52)'; // neon pink arch rings
+        
+        for (let z = NEAR_Z + stepZ - offsetZ; z < FAR_Z; z += stepZ) {
+            const scale = FOCAL / z;
+            const sx = VP_X + (-camWX) * scale;
+            const groundScreenY = HORIZON_Y + currentCamHeight * scale;
+            const sy = groundScreenY - 110 * scale;
+            const radius = 175 * scale;
+            
+            ctx.lineWidth = Math.max(1.0, 3.8 * scale);
+            ctx.beginPath();
+            ctx.ellipse(sx, sy, radius * 1.5, radius * 1.25, 0, Math.PI * 0.05, Math.PI * 0.95, true);
+            ctx.stroke();
+        }
+        ctx.restore();
+        return;
+    }
+
+
+
+    if (typeof gameTheme !== 'undefined' && gameTheme === 'jungle') {
+        ctx.fillStyle = '#1c1917'; // dark stone path
+        ctx.beginPath();
+        ctx.moveTo(fl.x, fl.y); ctx.lineTo(fr.x, fr.y);
+        ctx.lineTo(nr.x, nr.y); ctx.lineTo(nl.x, nl.y);
+        ctx.closePath(); ctx.fill();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(fl.x, fl.y); ctx.lineTo(fr.x, fr.y);
+        ctx.lineTo(nr.x, nr.y); ctx.lineTo(nl.x, nl.y);
+        ctx.closePath(); ctx.clip();
+        ctx.globalCompositeOperation = 'overlay';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.022)';
+        ctx.lineWidth = 1.0;
+        
+        const roadStepZ = 60;
+        const roadOffZ = typeof roadOff !== 'undefined' ? (roadOff % roadStepZ) : 0;
+        for (let z = NEAR_Z + roadStepZ - roadOffZ; z < FAR_Z; z += roadStepZ) {
+            const line = project(0, 0, z);
+            ctx.beginPath();
+            ctx.moveTo(0, line.y);
+            ctx.lineTo(W, line.y);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const pRad = 48 * fl.s;
+        ctx.fillStyle = 'rgba(52, 211, 153, 0.12)';
+        ctx.beginPath();
+        ctx.ellipse(fl.x + 80 * fl.s, fl.y + 40, pRad * 1.5, pRad * 0.45, 0.12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.fillStyle = '#1e3a1e'; // deep grass green path bounds
+        ctx.beginPath();
+        ctx.moveTo(sl.x, sl.y); ctx.lineTo(fl.x, fl.y);
+        ctx.lineTo(nl.x, nl.y); ctx.lineTo(snl.x, snl.y);
+        ctx.closePath(); ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(fr.x, fr.y); ctx.lineTo(sr.x, sr.y);
+        ctx.lineTo(snr.x, snr.y); ctx.lineTo(nr.x, nr.y);
+        ctx.closePath(); ctx.fill();
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.28)';
+        ctx.lineWidth = Math.max(3.0, 5.8 * fl.s);
+        ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(nl.x, nl.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(fr.x, fr.y); ctx.lineTo(nr.x, nr.y); ctx.stroke();
+        ctx.restore();
+        return;
+    }
 
     const roadColor = interpolateColor(
         ENV_COLORS.road[timeState.current],
@@ -1006,10 +1240,6 @@ function drawRoad(ctx) {
     ctx.restore();
 
     // Sidewalk slabs
-    const sl = project(-ROAD_HALF_W - 60, 0, FAR_Z);
-    const sr = project(ROAD_HALF_W + 60, 0, FAR_Z);
-    const snl = project(-ROAD_HALF_W - 60, 0, NEAR_Z);
-    const snr = project(ROAD_HALF_W + 60, 0, NEAR_Z);
 
     ctx.fillStyle = 'rgba(20, 15, 30, 0.95)';
     ctx.beginPath();
@@ -1045,6 +1275,53 @@ function drawRoad(ctx) {
 }
 
 function drawSingleGuardRail(ctx, wx, z, stepZ) {
+    if (typeof tunnelState !== 'undefined' && tunnelState === 'inside') {
+        return;
+    }
+
+    if (typeof gameTheme !== 'undefined' && gameTheme === 'jungle') {
+        const base1 = project(wx, 0, z);
+        const top1 = project(wx, 12, z);
+        const base2 = project(wx, 0, z + stepZ);
+        const top2 = project(wx, 12, z + stepZ);
+
+        if (base1.y < HORIZON_Y || base2.y < HORIZON_Y) return;
+
+        ctx.save();
+        ctx.fillStyle = '#451a03'; // rustic wood post
+        ctx.strokeStyle = '#1e0a02';
+        ctx.lineWidth = 1.0;
+        const t = Math.max(1.8, 3.8 * base1.s);
+        ctx.fillRect(top1.x - t * 0.5, top1.y, t, base1.y - top1.y);
+        ctx.strokeRect(top1.x - t * 0.5, top1.y, t, base1.y - top1.y);
+
+        ctx.strokeStyle = '#78350f'; // horizontal wood beams
+        ctx.lineWidth = Math.max(1.8, 4.0 * base1.s);
+        ctx.beginPath();
+        ctx.moveTo(top1.x, top1.y + 2 * base1.s);
+        ctx.lineTo(top2.x, top2.y + 2 * base2.s);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = Math.max(1.2, 2.8 * base1.s);
+        ctx.beginPath();
+        ctx.moveTo(top1.x, top1.y + 7 * base1.s);
+        ctx.lineTo(top2.x, top2.y + 7 * base2.s);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#eab308'; // yellow rope ties details
+        ctx.lineWidth = Math.max(0.5, 1.2 * base1.s);
+        ctx.beginPath();
+        ctx.moveTo(top1.x - t * 0.5, top1.y + 2 * base1.s);
+        ctx.lineTo(top1.x + t * 0.5, top1.y + 8 * base1.s);
+        ctx.moveTo(top1.x + t * 0.5, top1.y + 2 * base1.s);
+        ctx.lineTo(top1.x - t * 0.5, top1.y + 8 * base1.s);
+        ctx.stroke();
+
+        ctx.restore();
+        return;
+    }
+
     const base1 = project(wx, 0, z);
     const top1 = project(wx, 14, z);
     const base2 = project(wx, 0, z + stepZ);
@@ -1083,6 +1360,33 @@ function drawSingleGuardRail(ctx, wx, z, stepZ) {
 }
 
 function drawRoadLines(ctx) {
+    if (typeof tunnelState !== 'undefined' && tunnelState === 'inside') {
+        return;
+    }
+
+    if (typeof gameTheme !== 'undefined' && gameTheme === 'jungle') {
+        const stepZ = 95;
+        const currentOff = typeof roadOff !== 'undefined' ? (roadOff % stepZ) : 0;
+        [-55, 55].forEach(lx => {
+            for (let z = NEAR_Z + stepZ - currentOff; z < FAR_Z; z += stepZ) {
+                const a = project(lx, 0, z);
+                const b = project(lx, 0, z + 50);
+                if (a.y < HORIZON_Y || b.y < HORIZON_Y) continue;
+
+                // Outer green glow
+                ctx.strokeStyle = 'rgba(16, 185, 129, 0.18)';
+                ctx.lineWidth = Math.max(5.0, 11.0 * a.s);
+                ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+
+                // Inner core
+                ctx.strokeStyle = 'rgba(110, 231, 183, 0.95)';
+                ctx.lineWidth = Math.max(1.2, 3.2 * a.s);
+                ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+            }
+        });
+        return;
+    }
+
     const stepZ = 95;
     const currentOff = typeof roadOff !== 'undefined' ? (roadOff % stepZ) : 0;
     
@@ -1158,6 +1462,76 @@ function drawRoadLines(ctx) {
 }
 
 function drawSinglePole(ctx, z, index = 0) {
+    if (typeof tunnelState !== 'undefined' && tunnelState === 'inside') {
+        return;
+    }
+
+    if (typeof gameTheme !== 'undefined' && gameTheme === 'jungle') {
+        [-POLE_WX - 8, POLE_WX + 8].forEach(wx => {
+            const base = project(wx, 0, z);
+            if (base.y < HORIZON_Y || base.s < 0.04) return;
+
+            const s = base.s;
+            ctx.save();
+            ctx.translate(base.x, base.y);
+            ctx.scale(s, s);
+
+            // 1. Draw wooden torch post (rustic textured wood stick)
+            ctx.strokeStyle = '#451a03'; // dark redwood
+            ctx.lineWidth = 4.0;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, -90); // pole height 90 units
+            ctx.stroke();
+
+            // 2. Draw tribal skull/head container at the top of the torch
+            ctx.fillStyle = '#78350f'; // amber/brown wooden bowl
+            ctx.strokeStyle = '#1a0505';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(-10, -90);
+            ctx.lineTo(-12, -106);
+            ctx.lineTo(12, -106);
+            ctx.lineTo(10, -90);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            // 3. Glowing orange/yellow tribal fire flame (animated with sine)
+            const tick = typeof frame !== 'undefined' ? frame : 0;
+            const flameSize = 15 + Math.sin(tick * 0.22 + index) * 4.5;
+            
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            
+            // Outer fire glow halo
+            const fireGlow = ctx.createRadialGradient(0, -112, 0, 0, -112, flameSize * 1.8);
+            fireGlow.addColorStop(0, 'rgba(249, 115, 22, 0.72)'); // orange
+            fireGlow.addColorStop(0.5, 'rgba(239, 68, 68, 0.28)'); // red
+            fireGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = fireGlow;
+            ctx.beginPath();
+            ctx.arc(0, -112, flameSize * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Core flame shape (yellow-white teardrop)
+            const coreG = ctx.createLinearGradient(0, -106, 0, -106 - flameSize);
+            coreG.addColorStop(0, '#f59e0b'); // amber
+            coreG.addColorStop(0.65, '#fde68a'); // warm yellow
+            coreG.addColorStop(1, '#ffffff'); // white top
+            ctx.fillStyle = coreG;
+            ctx.beginPath();
+            ctx.moveTo(-6, -106);
+            ctx.quadraticCurveTo(-9, -106 - flameSize * 0.5, 0, -106 - flameSize);
+            ctx.quadraticCurveTo(9, -106 - flameSize * 0.5, 6, -106);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+            ctx.restore();
+        });
+        return;
+    }
+
     const timeState = getCurrentTimeState();
     
     // Light visibility factors (bright at night/sunset/dawn)
@@ -1296,6 +1670,79 @@ function drawSinglePole(ctx, z, index = 0) {
 }
 
 function drawSingleTree(ctx, z) {
+    if (typeof tunnelState !== 'undefined' && tunnelState === 'inside') {
+        return;
+    }
+
+    if (typeof gameTheme !== 'undefined' && gameTheme === 'jungle') {
+        [-TREE_WX - 10, TREE_WX + 10].forEach(wx => {
+            const base = project(wx, 0, z);
+            if (base.y < HORIZON_Y || base.s < 0.04) return;
+
+            const s = base.s;
+            ctx.save();
+            ctx.translate(base.x, base.y);
+            ctx.scale(s, s);
+
+            // 1. Ancient Massive trunk (much wider than sakura trees)
+            ctx.fillStyle = '#171412'; // dark wooden bark
+            ctx.strokeStyle = '#050303';
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.moveTo(-28, 0);
+            ctx.bezierCurveTo(-18, -12, -15, -42, -18, -78);
+            ctx.lineTo(-26, -92); ctx.lineTo(-18, -95); ctx.lineTo(-12, -80);
+            ctx.lineTo(-5, -100); ctx.lineTo(5, -100); ctx.lineTo(12, -80);
+            ctx.lineTo(18, -95); ctx.lineTo(26, -92);
+            ctx.bezierCurveTo(15, -42, 18, -12, 28, 0);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+
+            // Root flares and moss
+            ctx.fillStyle = '#065f46'; // dark green moss
+            ctx.beginPath();
+            ctx.ellipse(-26, -2, 14, 5, -0.22, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(26, -2, 14, 5, 0.22, 0, Math.PI * 2); ctx.fill();
+
+            // 2. Hanging Vines / Lianas
+            ctx.strokeStyle = '#047857';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(-18, -60);
+            ctx.bezierCurveTo(-28, -40, -22, -10, -25, 0);
+            ctx.moveTo(18, -55);
+            ctx.bezierCurveTo(28, -35, 22, -10, 24, 0);
+            ctx.stroke();
+
+            // 3. Dense jungle leaves (deep green / emerald gradients)
+            const forestLeaves = [
+                { x: -35, y: -90, r: 35, c1: '#047857', c2: '#064e3b' },
+                { x: 35, y: -88, r: 32, c1: '#047857', c2: '#064e3b' },
+                { x: 0, y: -115, r: 48, c1: '#10b981', c2: '#047857' },
+                { x: -18, y: -72, r: 24, c1: '#059669', c2: '#064e3b' },
+                { x: 18, y: -70, r: 22, c1: '#059669', c2: '#064e3b' }
+             ];
+             forestLeaves.forEach(f => {
+                 const rg = ctx.createRadialGradient(f.x - f.r * 0.22, f.y - f.r * 0.22, 0, f.x, f.y, f.r);
+                 rg.addColorStop(0, f.c1);
+                 rg.addColorStop(1, f.c2);
+                 ctx.fillStyle = rg;
+                 ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
+             });
+
+             // 4. Glowing magical bioluminescent spores (little pink dots)
+             ctx.fillStyle = '#ec4899';
+             const spores = [{ x: -28, y: -85 }, { x: 28, y: -82 }, { x: 0, y: -108 }, { x: -10, y: -115 }, { x: 12, y: -100 }];
+             spores.forEach(sp => {
+                 ctx.beginPath(); ctx.arc(sp.x, sp.y, 2.2, 0, Math.PI * 2); ctx.fill();
+             });
+
+             ctx.restore();
+         });
+         return;
+     }
+
     [-TREE_WX, TREE_WX].forEach(wx => {
         const base = project(wx, 0, z);
         if (base.y < HORIZON_Y || base.s < 0.04) return;
@@ -1459,29 +1906,68 @@ function updateSakura() {
 }
 
 function drawSakura(ctx) {
+    const isJungle = (typeof gameTheme !== 'undefined' && gameTheme === 'jungle');
+    
     sakura.forEach(s => {
         ctx.save();
         ctx.globalAlpha = s.alpha;
         ctx.translate(s.x, s.y);
         ctx.rotate(s.angle);
         
-        // Single organic sakura petal shape (curved leaf)
-        ctx.fillStyle = '#ffb7c5';
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.bezierCurveTo(-s.size * 0.5, -s.size * 0.4, -s.size * 0.5, -s.size * 1.2, 0, -s.size);
-        ctx.bezierCurveTo(s.size * 0.5, -s.size * 1.2, s.size * 0.5, -s.size * 0.4, 0, 0);
-        ctx.closePath();
-        ctx.fill();
+        if (isJungle) {
+            if (s.phase === undefined) {
+                s.phase = Math.random() * Math.PI * 2;
+            }
+            s.phase += 0.08;
+            
+            const typeRoll = s.size > 5.5; // half fireflies, half autumn leaves
+            if (typeRoll) {
+                // ── Glowing neon-green firefly ──
+                ctx.save();
+                ctx.globalCompositeOperation = 'screen';
+                
+                // Spore glow blinking animation
+                const fireGlow = 4 + Math.sin(s.phase) * 2;
+                const radG = ctx.createRadialGradient(0, 0, 0, 0, 0, fireGlow);
+                radG.addColorStop(0, 'rgba(52, 211, 153, 0.95)'); // emerald green
+                radG.addColorStop(0.5, 'rgba(110, 231, 183, 0.35)');
+                radG.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = radG;
+                ctx.beginPath(); ctx.arc(0, 0, fireGlow, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            } else {
+                // ── Falling golden jungle leaf ──
+                ctx.fillStyle = '#d97706'; // amber leaf
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(-s.size * 0.4, -s.size * 0.3, -s.size * 0.4, -s.size * 1.1, 0, -s.size);
+                ctx.bezierCurveTo(s.size * 0.4, -s.size * 1.1, s.size * 0.4, -s.size * 0.3, 0, 0);
+                ctx.closePath(); ctx.fill();
+                
+                // Leaf crease vein
+                ctx.strokeStyle = '#78350f';
+                ctx.lineWidth = 0.5;
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -s.size * 0.82); ctx.stroke();
+            }
+        } else {
+            // Single organic sakura petal shape (curved leaf)
+            ctx.fillStyle = '#ffb7c5';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.bezierCurveTo(-s.size * 0.5, -s.size * 0.4, -s.size * 0.5, -s.size * 1.2, 0, -s.size);
+            ctx.bezierCurveTo(s.size * 0.5, -s.size * 1.2, s.size * 0.5, -s.size * 0.4, 0, 0);
+            ctx.closePath();
+            ctx.fill();
 
-        // Shaded dark pink center crease/vein
-        ctx.strokeStyle = '#f43f5e';
-        ctx.lineWidth = Math.max(0.4, 0.7 * s.size * 0.15);
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(0, -s.size * 0.85);
-        ctx.stroke();
-
+            // Shaded dark pink center crease/vein
+            ctx.strokeStyle = '#f43f5e';
+            ctx.lineWidth = Math.max(0.4, 0.7 * s.size * 0.15);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, -s.size * 0.85);
+            ctx.stroke();
+        }
+        
         ctx.restore();
     });
     ctx.globalAlpha = 1.0;

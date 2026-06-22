@@ -13,6 +13,12 @@ let spawnTimer = 0;
 let camShake = 0;
 let speedBoost = 0; // speed boost value from Tapli slap
 
+// Theme and Tunnel transition state variables
+let gameTheme = 'tokyo';     // 'tokyo' or 'jungle'
+let tunnelState = 'none';    // 'none' or 'inside'
+let tunnelT = 0;             // frame timer for tunnel transition
+let nextTunnelDist = 1000;   // first tunnel gate spawns at 1000m
+
 let roadOff = 0;
 let poleOff = 0;
 let treeOff = 0;
@@ -187,6 +193,12 @@ function startGame() {
 
     speedBoost = 0;
 
+    // Reset Theme and Tunnel transitions
+    gameTheme = 'tokyo';
+    tunnelState = 'none';
+    tunnelT = 0;
+    nextTunnelDist = 1000;
+
     document.getElementById('scrStart').classList.add('hidden');
     document.getElementById('scrOver').classList.add('hidden');
     document.getElementById('txStatus').textContent = '';
@@ -218,6 +230,11 @@ function gameOver() {
         cb.textContent = 'Claim ETH';
     }
     
+    // Reset Theme and Tunnel transitions on game over
+    gameTheme = 'tokyo';
+    tunnelState = 'none';
+    tunnelT = 0;
+
     document.getElementById('scrOver').classList.remove('hidden');
 
     if (loopRafId) {
@@ -238,6 +255,27 @@ function updateHUD() {
 }
 
 function spawnWave() {
+    // If a tunnel gate is scheduled and we are not in a tunnel, spawn it in the far right lane
+    if (dist >= nextTunnelDist && tunnelState === 'none') {
+        obstacles.push({
+            lane: 2,
+            type: 'tunnel_gate',
+            wz: FAR_Z,
+            w: 125,
+            h: 110,
+            len: 85,
+            passed: false
+        });
+        // Cooldown: schedule the next tunnel gate 3km (3000m) later
+        nextTunnelDist = dist + 3000;
+        return;
+    }
+
+    // Pause normal obstacle spawning if player is inside the transition tunnel
+    if (tunnelState === 'inside') {
+        return;
+    }
+
     const roll = Math.random();
     if (roll < 0.5) {
         // Spawns obstacles
@@ -359,6 +397,22 @@ function update() {
         const o = obstacles[i];
         o.wz -= currentSpeed;
         
+        // Custom Tunnel Gate logic: enters tunnel if player is in the far right lane
+        if (o.type === 'tunnel_gate') {
+            if (!o.passed && o.wz <= P.wz + 15 && o.wz + o.len >= P.wz - 15) {
+                o.passed = true;
+                if (P.lane === 2) {
+                    tunnelState = 'inside';
+                    tunnelT = 180; // 3 seconds transition countdown
+                    obstacles.length = 0; // Clear other obstacles
+                    coins.length = 0; // Clear coins
+                    sfx('slide');
+                    break;
+                }
+            }
+            continue;
+        }
+
         // Collsion check range: near the character
         if (!o.passed && o.wz <= P.wz + 50 && o.wz + o.len >= P.wz - 15) {
             // Only check collisions if not invincible
@@ -458,6 +512,16 @@ function update() {
 
     // Floating sakura petals
     updateSakura();
+
+    // Update Tunnel transition countdown
+    if (tunnelState === 'inside') {
+        tunnelT--;
+        if (tunnelT <= 0) {
+            // Emerge from tunnel: toggle theme
+            gameTheme = gameTheme === 'tokyo' ? 'jungle' : 'tokyo';
+            tunnelState = 'none';
+        }
+    }
 }
 
 function render() {
